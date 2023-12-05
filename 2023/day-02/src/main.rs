@@ -36,6 +36,14 @@ impl Game {
     fn is_possible(&self) -> bool {
         self.sets.iter().all(GameSet::is_possible)
     }
+
+    fn power(&self) -> i32 {
+        let colors = vec!["red", "green", "blue"];
+        colors.iter().map(|color| 
+            self.sets.iter().flat_map(|set| set.iter())
+            .filter(|(_, c)| c == color).map(|(n, _)| n).max()
+        ).product::<Option<i32>>().unwrap_or(0)
+    }
 }
 
 impl GameSet {
@@ -51,6 +59,10 @@ impl GameSet {
             .collect();
 
         GameSet { items }
+    }
+
+    fn iter(&self) -> std::slice::Iter<(i32, String)> {
+        self.items.iter()
     }
 
     fn is_possible(&self) -> bool {
@@ -81,6 +93,14 @@ fn main() -> io::Result<()> {
         .sum();
 
     println!("Sum: {}", sum);
+
+    // Part 2
+
+    let power: i32 = games.iter()
+        .map(|game| game.power())
+        .sum();
+
+    println!("Power: {}", power);
 
     Ok(())
 }
