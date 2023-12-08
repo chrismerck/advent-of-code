@@ -1,11 +1,10 @@
 use std::fs::File;
-use std::io::{self, BufReader, BufRead};
+use std::io::{BufReader, BufRead};
 use std::env;
 use regex::Regex;
-use std::error::Error;
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 
-
+#[derive(Debug)]
 struct PartNumber {
     number: u32,
     x: i32,
@@ -38,6 +37,7 @@ struct PartsGrid {
     height: i32,
     width: i32,
     parts: Vec<Vec<bool>>,
+    gears: Vec<Vec<bool>>,
     numbers: Vec<PartNumber>,
 }
 
@@ -47,12 +47,14 @@ impl PartsGrid {
             height: 0,
             width: 0,
             parts: Vec::new(),
+            gears: Vec::new(),
             numbers: Vec::new(),
         }
     }
 
     fn add_line_parts(&mut self, line: &str) {
         let mut parts = Vec::new();
+        let mut gears = Vec::new();
         for c in line.chars() {
             match c {
                 // blank
@@ -62,11 +64,17 @@ impl PartsGrid {
                 // any other symbol is a part
                 _ => parts.push(true),
             }
+            if c == '*' {
+                gears.push(true);
+            } else {
+                gears.push(false);
+            }
         }
         self.parts.push(parts);
+        self.gears.push(gears);
     }
 
-    fn add_line_numbers(&mut self, line: &str) -> Result<(), Box<dyn Error>> {
+    fn add_line_numbers(&mut self, line: &str) {
         // find all numbers in the line
         let re = Regex::new(r"\d+").unwrap();
         //let mut numbers = Vec::new();
@@ -80,7 +88,6 @@ impl PartsGrid {
             let number = content.parse().unwrap();
             self.numbers.push(PartNumber { number, x, y, length });
         }
-        Ok(())
     }
 
     fn add_line(&mut self, line: &str) {
@@ -90,7 +97,7 @@ impl PartsGrid {
         self.width = self.parts[0].len() as i32;
     }
 
-    fn print(&self) {
+    fn _print(&self) {
         for y in 0..self.height {
             for x in 0..self.width {
                 if self.parts[y as usize][x as usize] {
@@ -103,26 +110,45 @@ impl PartsGrid {
         }
     }
 
-    fn sum_true_parts(&self) -> u32 {
+    fn get_part_locations(&self) -> HashSet<(i32, i32)> {
         // create a HashSet of part locations from parts grid
-        let part_locations : HashSet<(i32, i32)> = 
-            (0..self.height).flat_map(|y| (0..self.width)
-                .filter(move |x| self.parts[y as usize][*x as usize])
-                .map(move |x| (x, y)))
-            .collect();
+        (0..self.height).flat_map(|y| (0..self.width)
+            .filter(move |x| self.parts[y as usize][*x as usize])
+            .map(move |x| (x, y)))
+        .collect()
+    }
+
+    fn sum_true_parts(&self) -> u32 {
+        let part_locations = self.get_part_locations();
         self.numbers.iter()
             .map(|n| (n, n.neighbors(self.width, self.height)))
-            .inspect(|(n, neighbors)| 
-                println!("{}: {} {} {} {:?}", 
-                    n.number, n.x, n.y, n.length,
-                    neighbors))
-            .filter(|(n, neighbors)| 
+            .filter(|(_n, neighbors)| 
                 neighbors.iter()
                     .any(|(x, y)| 
                         part_locations.contains(&(*x, *y))))
             .map(|(n, _)| n.number)
             .sum()
     }
+
+    fn sum_gear_ratios(&self) -> u32 {
+        // get map from parts positions to the numbers neighboring them
+        let mut part_numbers : HashMap<(i32, i32), Vec<u32>> = HashMap::new();
+        let part_locations = self.get_part_locations();
+        for n in &self.numbers {
+            for (x, y) in n.neighbors(self.width, self.height) {
+                if part_locations.contains(&(x, y)) {
+                    part_numbers.entry((x, y)).or_insert(Vec::new()).push(n.number);
+                }
+            }
+        }
+        // sum the gear ratios
+        part_numbers.iter()
+            .filter(|((x, y), _numbers)| self.gears[*y as usize][*x as usize])
+            .filter(|(_part, numbers)| numbers.len() == 2)
+            .map(|(_part, numbers)| numbers[0] * numbers[1])
+            .sum()
+    }
+
 }
 
 fn main() {
@@ -135,6 +161,6 @@ fn main() {
         let line = line.expect("Failed to read line");
         grid.add_line(&line);
     }
-    grid.print();
     println!("Sum of True Parts: {}", grid.sum_true_parts());
+    println!("Sum of Gear Ratios: {}", grid.sum_gear_ratios());
 }
