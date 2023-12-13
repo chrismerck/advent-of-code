@@ -126,6 +126,22 @@ fn main() {
         locations.push(val);
     }
 
-    println!("min location: {:?}", locations.iter().min().unwrap());
+    println!("Part 1: min location: {:?}", locations.iter().min().unwrap());
+
+    // consider seed ranges
+    locations = Vec::new();
+    for i in 0..seeds.len()/2 {
+        let seed_start = seeds[i*2];
+        let len = seeds[i*2+1];
+        for seed in seed_start..seed_start+len {
+            let mut val = seed;
+            for map in maps.iter() {
+                val = map.lookup(val);
+            }
+            locations.push(val);
+        }
+    }
+
+    println!("Part 2: min location: {:?}", locations.iter().min().unwrap());
 
 }
