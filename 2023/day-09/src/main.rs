@@ -37,8 +37,18 @@ fn predict(numbers: &Vec<i64>) -> i64 {
     }
 }
 
+fn predict_2(numbers: &Vec<i64>) -> i64 {
+    if numbers.iter().all(|x| x == &0) {
+        0
+    } else {
+        numbers[0] - predict_2(&differentiate(numbers))
+    }
+}
+
 fn main() {
     let seqs = parse_input();
     let result : i64 = seqs.iter().map(|seq| predict(seq)).sum();
-    println!("{}", result);
+    println!("Part 1: {}", result);
+    let result : i64 = seqs.iter().map(|seq| predict_2(seq)).sum();
+    println!("Part 2: {}", result);
 }
