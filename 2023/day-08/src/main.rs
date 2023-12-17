@@ -16,6 +16,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::env;
+use num::integer::lcm;
 
 fn parse_input() -> (Vec<char>, HashMap<String, (String, String)>) {
     let mut map = HashMap::new();
@@ -70,35 +71,52 @@ fn part1(instr: &Vec<char>, map: &HashMap<String, (String, String)>) {
     }
 }
 
+/// get the steps to get to xxZ, for any xx, up to cycle
+/// 11A --> 11B --> 11Z --> 12Z --> 11A would be [2, 3]
+fn get_z_times(instr: &Vec<char>, map: &HashMap<String, (String, String)>, 
+           start: &String) -> Vec<u64> {
+    let mut pos = start.clone();
+    let mut step_count = 0;
+    let mut rv = Vec::new();
+    let mut seen = HashSet::new();
+    // add starting pos to seen
+    seen.insert(pos.clone());
+    loop {
+        for i in instr {
+            step_count += 1;
+            pos = step(*i, &map, &pos);
+            if pos.ends_with("Z") {
+                rv.push(step_count);
+            }
+        }
+        if seen.contains(&pos) {
+            return rv;
+        }
+        seen.insert(pos.clone());
+    }
+}
+
 fn part2(instr: &Vec<char>, map: &HashMap<String, (String, String)>) {
     let mut positions : Vec<String> = 
         map.keys().filter(|k| k.ends_with("A")).map(|k| k.clone()).collect();
-
-    let mut step_count = 0;
-    loop {
-        //println!("Positions: {:?}", positions);
-        let mut new_positions = Vec::new();
-        for i in instr {
-            step_count += 1;
-            for pos in &positions {
-                let new_pos = step(*i, &map, pos);
-                //println!("  {} -> {}", pos, new_pos);
-                new_positions.push(new_pos);
-            }
-            positions = new_positions.clone();
-            new_positions.clear();
-        }
-        if positions.iter().all(|p| p.ends_with("Z")) {
-            println!("Got to all ..Z in {} steps", step_count);
-            return;
-        }
+    // get z_times for each position
+    let mut z_times = Vec::new();
+    for pos in &positions {
+        let this_z_times = get_z_times(instr, map, pos);
+        assert_eq!(this_z_times.len(), 1);
+        z_times.push(this_z_times[0]);
     }
+    // get lcm of z_times
+    let mut acc = z_times[0];
+    for i in 1..z_times.len() {
+        acc = lcm(acc, z_times[i]);
+    }
+    println!("Part 2: {}", acc);
 }
 
 fn main() {
     let (instr, map) = parse_input();
-    println!("Instructions: {:?}", instr);
-    println!("Map: {:?}", map);
+    println!();
     //part1(&instr, &map);
     part2(&instr, &map);
 }
