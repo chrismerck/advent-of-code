@@ -38,6 +38,52 @@ use std::env;
 use std::io::{BufRead, BufReader};
 use std::fs::File;
 
+#[derive(Debug, PartialOrd, PartialEq, Eq)]
+struct Range {
+    start: u64,
+    len: u64,
+}
+
+impl Ord for Range {
+    fn cmp(&self, other: &Range) -> std::cmp::Ordering {
+        self.start.cmp(&other.start)
+    }
+}
+
+impl Range {
+    fn new(start: u64, len: u64) -> Range {
+        Range {
+            start: start,
+            len: len,
+        }
+    }
+
+    fn intersect(&self, other: &Range) -> Option<Range> {
+        let start = if self.start > other.start { self.start } else { other.start };
+        let end = if self.end() < other.end() { self.end() } else { other.end() };
+        if start < end {
+            Some(Range::new(start, end - start))
+        } else {
+            None
+        }
+    }
+
+    fn subtract(&self, other: &Range) -> Vec<Range> {
+        let mut rv = Vec::new();
+        if self.start < other.start {
+            rv.push(Range::new(self.start, other.start - self.start));
+        }
+        if self.end() > other.end() {
+            rv.push(Range::new(other.end(), self.end() - other.end()));
+        }
+        rv
+    }
+
+    fn end(&self) -> u64 {
+        self.start + self.len
+    }
+}
+
 #[derive(Debug)]
 struct Map {
     source_category: String,
@@ -82,6 +128,37 @@ impl Map {
         }
         in_val
     }
+
+    /// map a single input range to one or more output ranges
+    fn lookup_range(&self, in_range : Range) -> Vec<Range> {
+        let mut in_ranges = vec![in_range];
+        let mut out_ranges = Vec::new();
+        for rule in self.mapping.iter() {
+            println!("     rule: {:?}", rule);
+            let out_start = rule[0];
+            let in_start = rule[1];
+            let len = rule[2];
+            let rule_in_range = Range::new(in_start, len);
+            let mut new_in_ranges = Vec::new();
+            for in_range in in_ranges.drain(..) {
+                println!("       in_range: {:?}", in_range);
+                if let Some(intersect) = in_range.intersect(&rule_in_range) {
+                    println!("         intersect: {:?}", intersect);
+                    let out_range = Range::new(out_start + intersect.start - in_start, intersect.len);
+                    out_ranges.push(out_range);
+                    let subtracted = in_range.subtract(&rule_in_range);
+                    println!("         subtracted: {:?}", subtracted);
+                    new_in_ranges.extend(subtracted);
+                } else {
+                    println!("         no intersect");
+                    new_in_ranges.push(in_range);
+                }
+            }
+            in_ranges = new_in_ranges;
+        }
+        out_ranges.extend(in_ranges);
+        out_ranges
+    }
 }
 
 fn main() {
@@ -112,36 +189,44 @@ fn main() {
     }
     maps.push(Map::parse(&map_lines));
 
-    println!("maps: {:?}", maps);
-
     // for each seed, apply each map in order
     let mut locations = Vec::new();
     for seed in seeds.iter() {
         let mut val = *seed;
-        println!("seed: {}", val);
         for map in maps.iter() {
             val = map.lookup(val);
-            println!("  {} {}", map.destination_category, val);
         }
         locations.push(val);
     }
 
     println!("Part 1: min location: {:?}", locations.iter().min().unwrap());
 
-    // consider seed ranges
-    locations = Vec::new();
+    // PART 2
+
+    // parse seed ranges
+    let mut ranges = Vec::new();
     for i in 0..seeds.len()/2 {
         let seed_start = seeds[i*2];
         let len = seeds[i*2+1];
-        for seed in seed_start..seed_start+len {
-            let mut val = seed;
-            for map in maps.iter() {
-                val = map.lookup(val);
-            }
-            locations.push(val);
-        }
+        println!("seed_start: {}, len: {}", seed_start, len);
+        ranges.push(Range::new(seed_start, len));
     }
 
-    println!("Part 2: min location: {:?}", locations.iter().min().unwrap());
+    // apply each map in order to the ranges
+    for map in maps.iter() {
+        println!("");
+        println!("Ranges: {:?}", ranges);
+        println!("Applying map: {:?}", map);
+        let mut new_ranges = Vec::new();
+        for range in ranges.drain(..) {
+            println!("  range: {:?}", range);
+            let mut out_ranges = map.lookup_range(Range::new(range.start, range.len));
+            new_ranges.append(&mut out_ranges);
+        }
+        ranges = new_ranges;
+    }
+
+    // find lowest location number in ranges
+    println!("Part 2: location: {:?}", ranges.iter().min().unwrap());
 
 }
