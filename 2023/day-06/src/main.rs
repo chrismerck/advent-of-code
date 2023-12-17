@@ -46,11 +46,27 @@ fn read_input(path: &str) -> Vec<(u64, u64)> {
     times.into_iter().zip(distances.into_iter()).collect()
 }
 
+fn read_input_part2(path: &str) -> (u64, u64) {
+    let path = Path::new(path);
+    let file = File::open(&path).unwrap();
+    let reader = io::BufReader::new(file);
+    let mut lines = reader.lines();
+    let time_line = lines.next().unwrap().unwrap();
+    let distance_line = lines.next().unwrap().unwrap();
+    let time: u64 = time_line.split_whitespace().skip(1).collect::<Vec<&str>>().join("").parse().unwrap();
+    let distance: u64 = distance_line.split_whitespace().skip(1).collect::<Vec<&str>>().join("").parse().unwrap();
+    (time, distance)
+}
+
 fn main() {
     let mut acc = 1;
     for (t, d) in read_input(env::args().nth(1).unwrap().as_str()) {
         let opt = options(t, d);
         acc *= opt;
     }
-    println!("{}", acc);
+    println!("Part 1: {}", acc);
+
+    let (time, distance) = read_input_part2(env::args().nth(1).unwrap().as_str());
+    let opt = options(time, distance);
+    println!("Part 2: {}", opt);
 }
