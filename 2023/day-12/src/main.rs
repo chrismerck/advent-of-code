@@ -104,10 +104,23 @@ fn solve(chars: Vec<char>, nums: Vec<usize>) -> Vec<Vec<char>> {
     panic!("Invalid character: {}", chars[0]);
 }
 
+fn fold(chars: &Vec<char>, nums: &Vec<usize>) -> (Vec<char>, Vec<usize>) {
+    let mut new_chars = Vec::new();
+    let mut new_nums = Vec::new();
+    for i in 0..4 {
+        new_nums.extend_from_slice(&nums);
+        new_chars.extend_from_slice(&chars);
+        new_chars.push('?');
+    }
+    new_nums.extend_from_slice(&nums);
+    new_chars.extend_from_slice(&chars);
+    (new_chars, new_nums)
+}
+
 fn main() {
     let input = parse_input();
     let mut acc = 0;
-    for (chars, nums) in input {
+    for (chars, nums) in &input {
         let solutions = solve(chars.clone(), nums.clone());
         println!("Input: {} {:?}", 
             chars.into_iter().collect::<String>(),
@@ -120,6 +133,23 @@ fn main() {
         acc += solutions.len();
         println!("");
     }
+    println!("Part 1: {}", acc);
 
-    println!("Total solutions: {}", acc);
+    // Part 2
+    let mut acc = 0;
+    for (chars, nums) in &input {
+        let (chars, nums) = fold(chars, nums);
+        let solutions = solve(chars.clone(), nums.clone());
+        println!("Input: {} {:?}", 
+            chars.into_iter().collect::<String>(),
+            nums);
+        println!("{} solutions", solutions.len());
+        /*for solution in &solutions {
+            println!("   {}", 
+                solution.into_iter().collect::<String>());
+        }*/
+        acc += solutions.len();
+        println!("");
+    }
+    println!("Part 2: {}", acc);
 }
