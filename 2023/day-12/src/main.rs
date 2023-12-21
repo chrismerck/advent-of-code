@@ -40,68 +40,35 @@ fn parse_input() -> Vec<(Vec<char>, Vec<usize>)> {
     input
 }
 
-fn solve(chars: Vec<char>, nums: Vec<usize>) -> Vec<Vec<char>> {
+fn solve(chars: &[char], nums: &[usize]) -> usize {
+    let mut result = 0;
     if chars.len() == 0 {
         if nums.len() == 0 {
-            return vec![vec![]]; // single empty solution
+            return 1; //return vec![vec![]]; // single empty solution
         } else {
-            return vec![]; // no solution
+            return 0; // return vec![]; // no solution
         }
     }
-    if chars[0] == '.' {
-        let mut result = solve(chars[1..].to_vec(), nums);
-        for i in 0..result.len() {
-            result[i].insert(0, '.');
-        }
-        return result;
+    if chars[0] == '.' || chars[0] == '?' {
+        result += solve(&chars[1..], &nums);
     }
-    if chars[0] == '#' {
+    if chars[0] == '#' || chars[0] == '?' {
         // we are forced to consume the first num
         if nums.len() == 0 {
-            return vec![]; // no solution
-        }
-        if nums[0] > chars.len() {
-            return vec![]; // no solution
-        }
-        for i in 0..nums[0] {
-            if chars[i] == '.' {
-                return vec![]; // no solution
-            }
-        }
-        if chars.len() == nums[0] {
-            let mut result = solve(chars[nums[0]..].to_vec(), nums[1..].to_vec());
-            for i in 0..result.len() {
-                for _j in 0..nums[0] {
-                    result[i].insert(0, '#');
-                }
-            }
-            return result;
+            // no solution
+        } else if nums[0] > chars.len() {
+            // no solution
+        } else if chars[0..nums[0]].iter().any(|&c| c == '.') {
+            // no solution
+        } else if chars.len() == nums[0] {
+            result += solve(&chars[nums[0]..], &nums[1..]);
+        } else if chars[nums[0]] == '#' {
+            // no solution
         } else {
-            if chars[nums[0]] == '#' {
-                return vec![]; // no solution
-            } else {
-                let mut result = solve(chars[nums[0] + 1..].to_vec(), nums[1..].to_vec());
-                for i in 0..result.len() {
-                    result[i].insert(0, '.');
-                    for _j in 0..nums[0] {
-                        result[i].insert(0, '#');
-                    }
-                }
-                return result;
-            }
+            result += solve(&chars[nums[0] + 1..], &nums[1..]);
         }
     }
-    if chars[0] == '?' {
-        let mut dot_chars = chars.clone();
-        dot_chars[0] = '.';
-        let mut hash_chars = chars.clone();
-        hash_chars[0] = '#';
-        return [
-            solve(dot_chars, nums.clone()),
-            solve(hash_chars, nums.clone()),
-        ].concat();
-    }
-    panic!("Invalid character: {}", chars[0]);
+    result
 }
 
 fn fold(chars: &Vec<char>, nums: &Vec<usize>) -> (Vec<char>, Vec<usize>) {
@@ -121,16 +88,17 @@ fn main() {
     let input = parse_input();
     let mut acc = 0;
     for (chars, nums) in &input {
-        let solutions = solve(chars.clone(), nums.clone());
+        let solutions = solve(&chars, &nums);
         println!("Input: {} {:?}", 
             chars.into_iter().collect::<String>(),
             nums);
-        println!("{} solutions", solutions.len());
+        println!("{} solutions", solutions);
+        /*
         for solution in &solutions {
             println!("   {}", 
                 solution.into_iter().collect::<String>());
-        }
-        acc += solutions.len();
+        }*/
+        acc += solutions;
         println!("");
     }
     println!("Part 1: {}", acc);
@@ -139,16 +107,21 @@ fn main() {
     let mut acc = 0;
     for (chars, nums) in &input {
         let (chars, nums) = fold(chars, nums);
-        let solutions = solve(chars.clone(), nums.clone());
+
+        // time this function call to see how long it takes
+        let time0 = std::time::Instant::now();
+        let solutions = solve(&chars, &nums);
+        let time1 = std::time::Instant::now();
         println!("Input: {} {:?}", 
             chars.into_iter().collect::<String>(),
             nums);
-        println!("{} solutions", solutions.len());
+        println!("{} solutions", solutions);
+        println!("Time: {:?}", time1 - time0);
         /*for solution in &solutions {
             println!("   {}", 
                 solution.into_iter().collect::<String>());
         }*/
-        acc += solutions.len();
+        acc += solutions;
         println!("");
     }
     println!("Part 2: {}", acc);
